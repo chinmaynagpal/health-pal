@@ -1,0 +1,152 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg:         #F2F2F7;
+    --surface:    #FFFFFF;
+    --surface-2: #FBFBFD;
+    --text:       #1C1C1E;
+    --text-muted: #8E8E93;
+    --separator:  #E5E5EA;
+    --ring:       rgba(52,199,89,0.35);
+  }
+  .dark {
+    --bg:         #000000;
+    --surface:    #1C1C1E;
+    --surface-2:  #2C2C2E;
+    --text:       #F2F2F7;
+    --text-muted: #8E8E93;
+    --separator:  rgba(84,84,88,0.5);
+    --ring:       rgba(52,199,89,0.5);
+  }
+
+  html, body { height: 100%; }
+  html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-feature-settings: "cv11", "ss01", "ss03";
+    letter-spacing: -0.011em;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior-y: none;
+  }
+
+  /* Distinctive numerals for stats */
+  .tabular { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+
+  /* Smooth focus ring for all interactives */
+  :where(button, a, input, textarea, select):focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--ring);
+    border-radius: 10px;
+  }
+
+  ::selection { background: rgba(52,199,89,0.25); }
+}
+
+@layer components {
+  /* Glass surface */
+  .glass {
+    background: color-mix(in oklab, var(--surface) 72%, transparent);
+    -webkit-backdrop-filter: saturate(180%) blur(22px);
+    backdrop-filter: saturate(180%) blur(22px);
+    border: 1px solid var(--separator);
+  }
+
+  /* Primary surface card — soft shadow + hairline border */
+  .surface {
+    background: var(--surface);
+    border: 1px solid var(--separator);
+    @apply rounded-3xl shadow-ios;
+  }
+  .surface-flat {
+    background: var(--surface);
+    border: 1px solid var(--separator);
+    @apply rounded-3xl;
+  }
+
+  /* iOS-grouped list (Settings) */
+  .list-group {
+    background: var(--surface);
+    @apply rounded-2xl overflow-hidden;
+    border: 1px solid var(--separator);
+  }
+  .list-row {
+    @apply flex items-center justify-between gap-3 px-4 py-3.5;
+    min-height: 52px;
+  }
+  .list-row + .list-row { border-top: 1px solid var(--separator); }
+
+  /* Buttons */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 font-medium rounded-2xl px-5 py-3
+           transition-[transform,background,box-shadow] duration-200
+           active:scale-[0.97];
+    letter-spacing: -0.01em;
+  }
+  .btn-primary { @apply btn text-white shadow-glow; background: #34C759; }
+  .btn-primary:hover { background: #28A745; }
+  .btn-ghost   {
+    @apply btn;
+    background: color-mix(in oklab, var(--surface) 60%, var(--bg));
+    color: var(--text);
+    border: 1px solid var(--separator);
+  }
+  .btn-ghost:hover { background: var(--surface-2); }
+
+  /* Inputs */
+  .input {
+    @apply w-full rounded-2xl px-4 py-3.5 outline-none transition-[box-shadow,border] duration-200;
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--separator);
+  }
+  .input::placeholder { color: var(--text-muted); }
+  .input:focus { box-shadow: 0 0 0 3px var(--ring); border-color: #34C759; }
+
+  .label {
+    @apply block text-[13px] font-medium mb-1.5;
+    color: var(--text-muted);
+  }
+
+  /* Segmented control (iOS) */
+  .segmented {
+    background: color-mix(in oklab, var(--surface-2) 85%, var(--bg));
+    border: 1px solid var(--separator);
+    @apply inline-flex p-1 rounded-2xl;
+  }
+
+  /* Chip (portion quick picks) */
+  .chip {
+    @apply text-xs px-3 py-1.5 rounded-full transition active:scale-95;
+    background: var(--surface-2);
+    color: var(--text);
+    border: 1px solid var(--separator);
+  }
+  .chip-active { background: #34C759; color: white; border-color: #34C759; }
+
+  /* Headings */
+  .h-display {
+    @apply font-display font-semibold tracking-tightest;
+    letter-spacing: -0.028em;
+  }
+
+  /* Skeleton shimmer */
+  .skeleton {
+    background: linear-gradient(100deg,
+      color-mix(in oklab, var(--surface-2) 70%, var(--bg)) 20%,
+      color-mix(in oklab, var(--surface) 80%, var(--bg)) 50%,
+      color-mix(in oklab, var(--surface-2) 70%, var(--bg)) 80%);
+    background-size: 200% 100%;
+    @apply animate-shimmer rounded-xl;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { scrollbar-width: none; }
+  .safe-bottom { padding-bottom: max(env(safe-area-inset-bottom), 0.5rem); }
+  .hairline { border-top: 1px solid var(--separator); }
+}
