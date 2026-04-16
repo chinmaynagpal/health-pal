@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Flame, Footprints, Scale, Target, Plus, ArrowRight } from "lucide-react";
@@ -9,24 +9,23 @@ import ProgressRing from "@/components/ProgressRing";
 import StatCard from "@/components/StatCard";
 import MealCard from "@/components/MealCard";
 import Skeleton from "@/components/ui/Skeleton";
-import Sheet from "@/components/ui/Sheet";
-import Input from "@/components/ui/Input";
-import Button from "@/components/ui/Button";
+import StepSheet from "@/components/StepSheet";
+import WeightSheet from "@/components/WeightSheet";
 
-// Simple in-memory cache so returning to dashboard is instant
-const cache = { foods: null, steps: null, weight: null, ts: 0 };
-const CACHE_TTL = 30_000; // 30 seconds
+const cache = { foods: null, steps: null, weight: null, yesterdaySteps: null, previousWeight: null, ts: 0 };
+const CACHE_TTL = 30_000;
 
 export default function Dashboard() {
   const { authFetch, user } = useAuth();
   const [foods, setFoods] = useState(cache.foods || []);
   const [steps, setSteps] = useState(cache.steps || 0);
   const [weight, setWeight] = useState(cache.weight);
+  const [yesterdaySteps, setYesterdaySteps] = useState(cache.yesterdaySteps || 0);
+  const [previousWeight, setPreviousWeight] = useState(cache.previousWeight);
   const hasCached = cache.ts > 0 && Date.now() - cache.ts < CACHE_TTL;
   const [loading, setLoading] = useState(!hasCached);
 
   const [sheet, setSheet] = useState(null);
-  const [sheetVal, setSheetVal] = useState("");
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async (showSkeleton) => {
@@ -36,12 +35,18 @@ export default function Dashboard() {
       const f = data.foods || [];
       const s = data.steps || 0;
       const w = data.latestWeight || user?.weightKg || null;
+      const ys = data.yesterdaySteps || 0;
+      const pw = data.previousWeight || null;
       setFoods(f);
       setSteps(s);
       setWeight(w);
+      setYesterdaySteps(ys);
+      setPreviousWeight(pw);
       cache.foods = f;
       cache.steps = s;
       cache.weight = w;
+      cache.yesterdaySteps = ys;
+      cache.previousWeight = pw;
       cache.ts = Date.now();
     } finally {
       setLoading(false);
@@ -50,12 +55,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!user) return;
-    // If we have fresh cache, show it instantly and refresh in background
-    if (hasCached) {
-      load(false);
-    } else {
-      load(true);
-    }
+    if (hasCached) { load(false); } else { load(true); }
     // eslint-disable-next-line
   }, [user]);
 
@@ -65,25 +65,31 @@ export default function Dashboard() {
   const calLeft = Math.max(0, calGoal - caloriesToday);
   const pct = Math.min(100, Math.round((caloriesToday / calGoal) * 100));
 
-  const openSheet = (which) => {
-    setSheet(which);
-    setSheetVal(which === "steps" ? steps || "" : weight || "");
-  };
-
-  const submitSheet = async () => {
-    const n = parseFloat(sheetVal);
-    if (Number.isNaN(n)) return toast.error("Enter a valid number");
+  const saveSteps = async (val) => {
     setSaving(true);
     try {
-      if (sheet === "steps") {
-        await authFetch("/api/steps", { method: "POST", body: JSON.stringify({ steps: Math.round(n) }) });
-        toast.success("Steps updated");
-      } else {
-        await authFetch("/api/weight", { method: "POST", body: JSON.stringify({ weightKg: n }) });
-        toast.success("Weight updated");
-      }
+      await authFetch("/api/steps", { method: "POST", body: JSON.stringify({ steps: Math.round(val) }) });
+      toast.success("Steps updated");
       setSheet(null);
-      load();
+      cache.ts = 0;
+      load(false);
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveWeight = async (val) => {
+    setSaving(true);
+    try {
+      await authFetch("/api/weight", { method: "POST", body: JSON.stringify({ weightKg: val }) });
+      toast.success("Weight updated");
+      setSheet(null);
+      cache.ts = 0;
+      load(false);
+    } catch (e) {
+      toast.error(e.message);
     } finally {
       setSaving(false);
     }
@@ -118,7 +124,6 @@ export default function Dashboard() {
         className="relative overflow-hidden rounded-[28px] p-6 text-white shadow-ios-lg"
         style={{ background: "linear-gradient(135deg,#34C759 0%,#1F8A39 100%)" }}
       >
-        {/* Decorative blur orb */}
         <div className="absolute -top-20 -right-20 w-64 h-64 rounded-full bg-white/18 blur-3xl" />
         <div className="absolute -bottom-24 -left-16 w-56 h-56 rounded-full bg-black/10 blur-3xl" />
 
@@ -158,7 +163,7 @@ export default function Dashboard() {
           value={loading ? "\u2014" : steps.toLocaleString()}
           sub={`Goal ${stepGoal.toLocaleString()}`}
           tint="#3B82F6"
-          onClick={() => openSheet("steps")}
+          onClick={() => setSheet("steps")}
         />
         <StatCard
           index={1}
@@ -167,7 +172,7 @@ export default function Dashboard() {
           value={weight ? `${weight} kg` : "Tap to log"}
           sub={user?.goals?.targetWeightKg ? `Target ${user.goals.targetWeightKg} kg` : " "}
           tint="#F59E0B"
-          onClick={() => openSheet("weight")}
+          onClick={() => setSheet("weight")}
         />
         <StatCard
           index={2}
@@ -226,30 +231,27 @@ export default function Dashboard() {
         </div>
       )}
 
-      <Sheet
-        open={!!sheet}
+      {/* Step Sheet */}
+      <StepSheet
+        open={sheet === "steps"}
         onClose={() => setSheet(null)}
-        title={sheet === "steps" ? "Log today's steps" : "Log today's weight"}
-      >
-        <div className="space-y-4">
-          <Input
-            autoFocus
-            type="number"
-            inputMode="decimal"
-            placeholder={sheet === "steps" ? "e.g. 8,200" : "e.g. 72.4"}
-            value={sheetVal}
-            onChange={(e) => setSheetVal(e.target.value)}
-          />
-          <div className="flex gap-2">
-            <Button variant="ghost" className="flex-1" onClick={() => setSheet(null)}>
-              Cancel
-            </Button>
-            <Button className="flex-1" loading={saving} onClick={submitSheet}>
-              Save
-            </Button>
-          </div>
-        </div>
-      </Sheet>
+        onSave={saveSteps}
+        currentSteps={steps}
+        yesterdaySteps={yesterdaySteps}
+        goal={stepGoal}
+        saving={saving}
+      />
+
+      {/* Weight Sheet */}
+      <WeightSheet
+        open={sheet === "weight"}
+        onClose={() => setSheet(null)}
+        onSave={saveWeight}
+        currentWeight={weight}
+        previousWeight={previousWeight}
+        targetWeight={user?.goals?.targetWeightKg}
+        saving={saving}
+      />
     </div>
   );
 }
