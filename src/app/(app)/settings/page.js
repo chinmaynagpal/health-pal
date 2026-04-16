@@ -27,19 +27,34 @@ export default function SettingsPage() {
   }, [user]);
 
   const save = async () => {
+    if (!form.name.trim()) return toast.error("Name is required");
+    const cal = Number(form.dailyCalories);
+    const stp = Number(form.dailySteps);
+    const tw = form.targetWeightKg ? Number(form.targetWeightKg) : null;
+    if (!cal || cal < 500 || cal > 10000)
+      return toast.error("Daily calories must be between 500 and 10,000");
+    if (!stp || stp < 100 || stp > 200000)
+      return toast.error("Daily steps must be between 100 and 200,000");
+    if (tw !== null && (tw < 20 || tw > 500))
+      return toast.error("Target weight must be between 20 and 500 kg");
+    if (form.heightCm && (Number(form.heightCm) < 50 || Number(form.heightCm) > 300))
+      return toast.error("Height must be between 50 and 300 cm");
+    if (form.weightKg && (Number(form.weightKg) < 20 || Number(form.weightKg) > 500))
+      return toast.error("Weight must be between 20 and 500 kg");
+
     setSaving(true);
     try {
       await authFetch("/api/auth/me", {
         method: "PATCH",
         body: JSON.stringify({
-          name: form.name,
+          name: form.name.trim(),
           heightCm: Number(form.heightCm) || undefined,
           weightKg: Number(form.weightKg) || undefined,
           whatsappNumber: form.whatsappNumber,
           goals: {
-            dailyCalories: Number(form.dailyCalories) || 2000,
-            dailySteps: Number(form.dailySteps) || 10000,
-            targetWeightKg: Number(form.targetWeightKg) || undefined,
+            dailyCalories: cal,
+            dailySteps: stp,
+            targetWeightKg: tw || undefined,
           },
         }),
       });
