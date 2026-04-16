@@ -23,7 +23,7 @@ export async function GET(req) {
   const [foods, stepDoc, yesterdayStepDoc, weights] = await Promise.all([
     FoodLog.find({ userId: uid, loggedAt: { $gte: todayStart } })
       .sort({ loggedAt: -1 })
-      .select("items totalCalories imageUrl loggedAt")
+      .select("items totalCalories loggedAt")
       .lean(),
     StepLog.findOne({ userId: uid, date: todayStart })
       .select("steps")

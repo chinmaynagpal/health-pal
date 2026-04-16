@@ -2,7 +2,6 @@
 const nextConfig = {
   compress: true,
   images: {
-    remotePatterns: [{ protocol: "https", hostname: "res.cloudinary.com" }],
     formats: ["image/avif", "image/webp"],
     deviceSizes: [320, 420, 640, 768, 1024],
     minimumCacheTTL: 86400,

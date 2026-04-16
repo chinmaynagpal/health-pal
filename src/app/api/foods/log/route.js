@@ -3,7 +3,8 @@ import { getUserIdFromRequest } from "@/lib/auth";
 import { dbConnect } from "@/lib/mongoose";
 import FoodLog from "@/models/FoodLog";
 import User from "@/models/User";
-import { calculateNutrition } from "@/lib/gemini";
+import { calculateFromIndianDb } from "@/lib/indianFoodDb";
+import { nutritionForPortion } from "@/lib/usda";
 import { sendWhatsApp } from "@/lib/twilio";
 
 export const runtime = "nodejs";
@@ -14,7 +15,7 @@ export async function POST(req) {
   if (!uid) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    const { imageUrl, items } = await req.json();
+    const { items } = await req.json();
     if (!Array.isArray(items) || !items.length)
       return NextResponse.json({ error: "items required" }, { status: 400 });
 
@@ -29,30 +30,32 @@ export async function POST(req) {
 
     await dbConnect();
 
-    // Use Gemini to calculate nutrition for all items in one call
-    const nutrition = await calculateNutrition(items);
+    // Calculate nutrition: Indian DB first, USDA fallback
+    const enriched = [];
+    for (const it of items) {
+      // Try Indian food database first
+      const indianResult = calculateFromIndianDb(it.foodName, it.portion);
 
-    let enriched;
-    if (nutrition) {
-      enriched = items.map((it, i) => {
-        const n = nutrition[i];
-        console.log(`[log] ${it.foodName} (${it.portion}) → ${n.grams}g → ${n.calories} kcal`);
-        return {
-          foodName: it.foodName,
-          portion: it.portion,
-          grams: n.grams || 0,
-          calories: n.calories || 0,
-          protein: n.protein || 0,
-          carbs: n.carbs || 0,
-          fat: n.fat || 0,
-        };
-      });
-    } else {
-      // Gemini failed — return error
-      return NextResponse.json(
-        { error: "Could not calculate nutrition. Please try again." },
-        { status: 500 }
-      );
+      if (indianResult) {
+        console.log(`[log] ${it.foodName} (${it.portion}) → ${indianResult.grams}g → ${indianResult.calories} kcal [indian_db]`);
+        enriched.push(indianResult);
+      } else {
+        // Fallback to USDA
+        console.log(`[log] ${it.foodName} not in Indian DB, trying USDA...`);
+        const usdaResult = await nutritionForPortion(it.foodName, it.portion);
+        enriched.push({
+          foodName: usdaResult.foodName,
+          portion: usdaResult.portion,
+          grams: usdaResult.grams || 0,
+          calories: usdaResult.calories || 0,
+          protein: usdaResult.protein || 0,
+          carbs: usdaResult.carbs || 0,
+          fat: usdaResult.fat || 0,
+          matched: usdaResult.matched || null,
+          source: "usda",
+          error: usdaResult.error || null,
+        });
+      }
     }
 
     const totalCalories = enriched.reduce((s, x) => s + (x.calories || 0), 0);
@@ -60,7 +63,6 @@ export async function POST(req) {
 
     const log = await FoodLog.create({
       userId: uid,
-      imageUrl,
       items: enriched,
       totalCalories,
     });

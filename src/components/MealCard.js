@@ -1,6 +1,5 @@
 "use client";
 import { memo } from "react";
-import Image from "next/image";
 import { motion } from "framer-motion";
 import { Flame } from "lucide-react";
 
@@ -20,21 +19,8 @@ export default memo(function MealCard({ log, index = 0 }) {
       whileTap={{ scale: 0.98 }}
       className="surface p-3 flex gap-3 items-center"
     >
-      <div className="relative w-20 h-20 rounded-2xl overflow-hidden shrink-0 bg-brand-100">
-        {log.imageUrl ? (
-          <Image
-            src={log.imageUrl}
-            alt={title}
-            width={80}
-            height={80}
-            className="w-full h-full object-cover"
-            loading="lazy"
-          />
-        ) : (
-          <div className="w-full h-full grid place-items-center text-brand-600">
-            <Flame size={22} />
-          </div>
-        )}
+      <div className="relative w-14 h-14 rounded-2xl overflow-hidden shrink-0 bg-brand-400/12 grid place-items-center text-brand-600">
+        <Flame size={22} />
       </div>
 
       <div className="flex-1 min-w-0">

@@ -3,11 +3,11 @@ import { memo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
-import { Home, Camera, LineChart, Settings } from "lucide-react";
+import { Home, PlusCircle, LineChart, Settings } from "lucide-react";
 
 const items = [
   { href: "/dashboard", label: "Home",     icon: Home },
-  { href: "/upload",    label: "Add",      icon: Camera },
+  { href: "/upload",    label: "Log",      icon: PlusCircle },
   { href: "/progress",  label: "Progress", icon: LineChart },
   { href: "/settings",  label: "Settings", icon: Settings },
 ];

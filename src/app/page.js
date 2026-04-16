@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Camera, LineChart, Sparkles, Flame } from "lucide-react";
+import { Search, LineChart, Sparkles, Flame } from "lucide-react";
 import Logo from "@/components/Logo";
 
 export default function Landing() {
@@ -29,17 +29,17 @@ export default function Landing() {
           transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
         >
           <span className="inline-flex items-center gap-2 text-brand-600 bg-white/70 backdrop-blur rounded-full px-3 py-1.5 text-[12px] font-semibold border border-brand-200">
-            <Sparkles size={13} /> AI-powered calorie tracking
+            <Sparkles size={13} /> Smart calorie tracking
           </span>
           <h1 className="mt-5 h-display text-5xl md:text-6xl leading-[1.02] tracking-tightest">
-            Snap a photo.<br />
+            Log your meal.<br />
             <span className="bg-gradient-to-br from-brand-500 to-brand-700 bg-clip-text text-transparent">
               Know your calories.
             </span>
           </h1>
           <p className="mt-5 text-[17px] text-ink-700 max-w-md leading-relaxed">
-            Health Pal reads your plate with Gemini Vision, matches every item to USDA nutrition data,
-            and quietly tracks your steps, weight, and goals in one calm, Apple-clean app.
+            Health Pal lets you search from 200+ Indian foods, log portions instantly,
+            and accurately tracks your calories, steps, weight, and goals in one calm, Apple-clean app.
           </p>
           <div className="mt-8 flex gap-3">
             <Link className="btn-primary" href="/signup">Start free</Link>
@@ -47,7 +47,7 @@ export default function Landing() {
           </div>
           <div className="mt-8 flex items-center gap-5 text-[12px] text-ink-600">
             <span>• No card required</span>
-            <span>• USDA-accurate</span>
+            <span>• 200+ Indian foods</span>
             <span>• Free forever</span>
           </div>
         </motion.div>
@@ -58,8 +58,8 @@ export default function Landing() {
           transition={{ duration: 0.8, delay: 0.1 }}
           className="grid grid-cols-2 gap-3"
         >
-          <FeatureCard icon={<Flame />}     tint="#EF4444" title="Smart meal logs" desc="Photo → items → portion → kcal" />
-          <FeatureCard icon={<Camera />}    tint="#34C759" title="Vision AI"        desc="Gemini 1.5 food recognition" />
+          <FeatureCard icon={<Flame />}     tint="#EF4444" title="Smart meal logs" desc="Search → portion → instant kcal" />
+          <FeatureCard icon={<Search />}    tint="#34C759" title="200+ foods"       desc="Indian food database built-in" />
           <FeatureCard icon={<LineChart />} tint="#3B82F6" title="Beautiful trends" desc="Weekly & monthly analytics" />
           <FeatureCard icon={<Sparkles />}  tint="#F59E0B" title="WhatsApp nudges"  desc="Instant meal summaries" />
         </motion.div>

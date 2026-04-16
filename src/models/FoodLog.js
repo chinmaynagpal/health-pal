@@ -11,6 +11,7 @@ const ItemSchema = new mongoose.Schema(
     fat: Number,
     fdcId: Number,
     matched: String,
+    source: String,
   },
   { _id: false }
 );
@@ -18,7 +19,6 @@ const ItemSchema = new mongoose.Schema(
 const FoodLogSchema = new mongoose.Schema(
   {
     userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-    imageUrl: String,
     items: [ItemSchema],
     totalCalories: Number,
     loggedAt: { type: Date, default: Date.now },
