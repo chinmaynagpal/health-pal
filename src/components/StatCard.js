@@ -1,30 +1,18 @@
 "use client";
+import { memo } from "react";
 import { motion } from "framer-motion";
 import Card from "@/components/ui/Card";
 
-export default function StatCard({ icon, label, value, sub, tint = "#34C759", onClick, index = 0 }) {
+export default memo(function StatCard({ icon, label, value, sub, tint = "#34C759", onClick, index = 0 }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20, scale: 0.95 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{
-        type: "spring",
-        stiffness: 300,
-        damping: 26,
-        delay: index * 0.06,
-      }}
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1], delay: index * 0.05 }}
     >
       <Card interactive={!!onClick} onClick={onClick} className="p-4">
         <div className="flex items-center gap-3">
-          <motion.div
-            initial={{ scale: 0, rotate: -30 }}
-            animate={{ scale: 1, rotate: 0 }}
-            transition={{
-              type: "spring",
-              stiffness: 400,
-              damping: 20,
-              delay: 0.15 + index * 0.06,
-            }}
+          <div
             className="w-10 h-10 rounded-2xl grid place-items-center shrink-0"
             style={{
               background: `color-mix(in oklab, ${tint} 16%, transparent)`,
@@ -32,7 +20,7 @@ export default function StatCard({ icon, label, value, sub, tint = "#34C759", on
             }}
           >
             {icon}
-          </motion.div>
+          </div>
           <div className="min-w-0">
             <div className="text-[12px] uppercase tracking-wider text-[color:var(--text-muted)] font-medium">
               {label}
@@ -46,4 +34,4 @@ export default function StatCard({ icon, label, value, sub, tint = "#34C759", on
       </Card>
     </motion.div>
   );
-}
+});

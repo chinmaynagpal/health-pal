@@ -24,21 +24,13 @@ export default function Dashboard() {
   const [sheetVal, setSheetVal] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const todayKey = new Date().toISOString().slice(0, 10);
-
   const load = async () => {
     setLoading(true);
     try {
-      const [f, s, w] = await Promise.all([
-        authFetch("/api/foods/log?days=1").then((r) => r.json()),
-        authFetch("/api/steps?days=1").then((r) => r.json()),
-        authFetch("/api/weight?days=30").then((r) => r.json()),
-      ]);
-      setFoods(f.logs || []);
-      const todayStep = (s.logs || []).find((x) => x.date.startsWith(todayKey));
-      setSteps(todayStep?.steps || 0);
-      const latest = (w.logs || []).slice(-1)[0];
-      setWeight(latest?.weightKg || user?.weightKg || null);
+      const data = await authFetch("/api/dashboard").then((r) => r.json());
+      setFoods(data.foods || []);
+      setSteps(data.steps || 0);
+      setWeight(data.latestWeight || user?.weightKg || null);
     } finally {
       setLoading(false);
     }
@@ -86,9 +78,9 @@ export default function Dashboard() {
     <div className="space-y-5">
       {/* Greeting */}
       <motion.div
-        initial={{ opacity: 0, y: 16 }}
+        initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ type: "spring", stiffness: 300, damping: 28 }}
+        transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
         className="pt-2"
       >
         <div className="text-[13px] uppercase tracking-wider text-[color:var(--text-muted)] font-medium">
@@ -101,10 +93,9 @@ export default function Dashboard() {
 
       {/* Hero ring card */}
       <motion.div
-        initial={{ opacity: 0, y: 24, scale: 0.95 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ type: "spring", stiffness: 280, damping: 26, delay: 0.08 }}
-        whileHover={{ scale: 1.01 }}
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1], delay: 0.05 }}
         whileTap={{ scale: 0.985 }}
         className="relative overflow-hidden rounded-[28px] p-6 text-white shadow-ios-lg"
         style={{ background: "linear-gradient(135deg,#34C759 0%,#1F8A39 100%)" }}
@@ -180,9 +171,9 @@ export default function Dashboard() {
 
       {/* Meals section */}
       <motion.div
-        initial={{ opacity: 0, y: 14 }}
+        initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ type: "spring", stiffness: 300, damping: 28, delay: 0.35 }}
+        transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1], delay: 0.2 }}
         className="flex items-center justify-between pt-2"
       >
         <h2 className="h-display text-lg">Today's meals</h2>
@@ -248,19 +239,14 @@ export default function Dashboard() {
 function EmptyMeals() {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16, scale: 0.97 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ type: "spring", stiffness: 300, damping: 26, delay: 0.4 }}
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1], delay: 0.25 }}
     >
       <Link href="/upload" className="surface p-8 flex flex-col items-center text-center gap-2 hover:shadow-ios-lg transition-shadow">
-        <motion.div
-          initial={{ scale: 0, rotate: -20 }}
-          animate={{ scale: 1, rotate: 0 }}
-          transition={{ type: "spring", stiffness: 400, damping: 18, delay: 0.55 }}
-          className="w-12 h-12 rounded-2xl bg-brand-400/15 text-brand-500 grid place-items-center mb-1"
-        >
+        <div className="w-12 h-12 rounded-2xl bg-brand-400/15 text-brand-500 grid place-items-center mb-1">
           <Plus size={20} />
-        </motion.div>
+        </div>
         <div className="font-medium">No meals yet today</div>
         <div className="text-sm text-[color:var(--text-muted)] max-w-xs">
           Snap a photo of your food — we'll detect items, ask for portion, and log USDA-accurate calories.

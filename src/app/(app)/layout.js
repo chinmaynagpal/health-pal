@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, memo } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
@@ -35,15 +35,11 @@ export default function AppLayout({ children }) {
         <AnimatePresence mode="popLayout" initial={false}>
           <motion.div
             key={pathname}
-            initial={{ opacity: 0, x: direction * 40, scale: 0.98 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
-            exit={{ opacity: 0, x: direction * -40, scale: 0.98 }}
-            transition={{
-              type: "spring",
-              stiffness: 380,
-              damping: 36,
-              mass: 0.8,
-            }}
+            initial={{ opacity: 0, x: direction * 30 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: direction * -30 }}
+            transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
+            style={{ willChange: "transform, opacity" }}
           >
             {children}
           </motion.div>

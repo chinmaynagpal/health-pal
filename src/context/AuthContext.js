@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useContext, useEffect, useState, useCallback } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 
 const Ctx = createContext(null);
@@ -9,40 +9,56 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [ready, setReady] = useState(false);
   const router = useRouter();
+  const tokenRef = useRef(null);
 
   useEffect(() => {
     const t = localStorage.getItem("hp_token");
-    if (t) setToken(t);
+    if (t) {
+      tokenRef.current = t;
+      setToken(t);
+    }
     setReady(true);
   }, []);
 
-  const refresh = useCallback(async (t = token) => {
-    if (!t) return null;
-    const res = await fetch("/api/auth/me", { headers: { Authorization: `Bearer ${t}` } });
-    if (res.ok) {
-      const data = await res.json();
-      setUser(data.user);
-      return data.user;
-    }
+  const refresh = useCallback(async (t) => {
+    const tok = t || tokenRef.current;
+    if (!tok) return null;
+    try {
+      const res = await fetch("/api/auth/me", { headers: { Authorization: `Bearer ${tok}` } });
+      if (res.ok) {
+        const data = await res.json();
+        setUser(data.user);
+        return data.user;
+      }
+    } catch {}
     return null;
-  }, [token]);
+  }, []);
 
+  // Only fetch user once on mount when token exists
+  const didFetch = useRef(false);
   useEffect(() => {
-    if (token) refresh(token);
+    if (token && !didFetch.current) {
+      didFetch.current = true;
+      refresh(token);
+    }
   }, [token, refresh]);
 
-  const login = (t, u) => {
+  const login = useCallback((t, u) => {
     localStorage.setItem("hp_token", t);
+    tokenRef.current = t;
     setToken(t);
     setUser(u);
-  };
+    didFetch.current = true; // user already provided, skip fetch
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem("hp_token");
+    tokenRef.current = null;
     setToken(null);
     setUser(null);
+    didFetch.current = false;
     router.push("/login");
-  };
+  }, [router]);
 
   const authFetch = useCallback(
     (url, opts = {}) =>
@@ -51,17 +67,18 @@ export function AuthProvider({ children }) {
         headers: {
           "Content-Type": "application/json",
           ...(opts.headers || {}),
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...(tokenRef.current ? { Authorization: `Bearer ${tokenRef.current}` } : {}),
         },
       }),
-    [token]
+    []
   );
 
-  return (
-    <Ctx.Provider value={{ token, user, ready, login, logout, refresh, authFetch }}>
-      {children}
-    </Ctx.Provider>
+  const value = useMemo(
+    () => ({ token, user, ready, login, logout, refresh, authFetch }),
+    [token, user, ready, login, logout, refresh, authFetch]
   );
+
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
 export const useAuth = () => useContext(Ctx);

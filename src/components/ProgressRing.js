@@ -1,7 +1,8 @@
 "use client";
+import { memo } from "react";
 import { motion } from "framer-motion";
 
-export default function ProgressRing({
+export default memo(function ProgressRing({
   value = 0,
   max = 100,
   size = 140,
@@ -46,7 +47,7 @@ export default function ProgressRing({
           strokeDasharray={c}
           initial={{ strokeDashoffset: c }}
           animate={{ strokeDashoffset: c * (1 - pct) }}
-          transition={{ type: "spring", stiffness: 80, damping: 22, delay: 0.1 }}
+          transition={{ duration: 0.6, ease: [0.25, 0.1, 0.25, 1] }}
         />
       </svg>
       <div className={`absolute inset-0 grid place-items-center text-center ${textClassName}`}>
@@ -57,4 +58,4 @@ export default function ProgressRing({
       </div>
     </div>
   );
-}
+});

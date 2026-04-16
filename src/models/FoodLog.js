@@ -17,13 +17,15 @@ const ItemSchema = new mongoose.Schema(
 
 const FoodLogSchema = new mongoose.Schema(
   {
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     imageUrl: String,
     items: [ItemSchema],
     totalCalories: Number,
-    loggedAt: { type: Date, default: Date.now, index: true },
+    loggedAt: { type: Date, default: Date.now },
   },
   { timestamps: true }
 );
+
+FoodLogSchema.index({ userId: 1, loggedAt: -1 });
 
 export default mongoose.models.FoodLog || mongoose.model("FoodLog", FoodLogSchema);

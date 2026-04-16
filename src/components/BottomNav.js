@@ -1,9 +1,9 @@
 "use client";
+import { memo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { Home, Camera, LineChart, Settings } from "lucide-react";
-import clsx from "clsx";
 
 const items = [
   { href: "/dashboard", label: "Home",     icon: Home },
@@ -12,7 +12,7 @@ const items = [
   { href: "/settings",  label: "Settings", icon: Settings },
 ];
 
-export default function BottomNav() {
+export default memo(function BottomNav() {
   const pathname = usePathname();
 
   return (
@@ -56,4 +56,4 @@ export default function BottomNav() {
       </div>
     </nav>
   );
-}
+});

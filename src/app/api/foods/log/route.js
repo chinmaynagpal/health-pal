@@ -37,21 +37,22 @@ export async function POST(req) {
 
     await dbConnect();
 
-    const enriched = [];
-    for (const it of items) {
-      const n = await nutritionForPortion(it.foodName, it.portion);
-      enriched.push({
-        foodName: it.foodName,
-        portion: it.portion,
-        grams: n.grams,
-        calories: n.calories || 0,
-        protein: n.protein || 0,
-        carbs: n.carbs || 0,
-        fat: n.fat || 0,
-        fdcId: n.fdcId,
-        matched: n.matched,
-      });
-    }
+    const enriched = await Promise.all(
+      items.map(async (it) => {
+        const n = await nutritionForPortion(it.foodName, it.portion);
+        return {
+          foodName: it.foodName,
+          portion: it.portion,
+          grams: n.grams,
+          calories: n.calories || 0,
+          protein: n.protein || 0,
+          carbs: n.carbs || 0,
+          fat: n.fat || 0,
+          fdcId: n.fdcId,
+          matched: n.matched,
+        };
+      })
+    );
 
     const totalCalories = enriched.reduce((s, x) => s + (x.calories || 0), 0);
 

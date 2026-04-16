@@ -1,4 +1,5 @@
 "use client";
+import { memo } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Moon, Sun, LogOut } from "lucide-react";
@@ -6,7 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import Logo from "@/components/Logo";
 
-export default function TopNav() {
+export default memo(function TopNav() {
   const { logout, user } = useAuth();
   const { theme, toggle } = useTheme();
 
@@ -47,4 +48,4 @@ export default function TopNav() {
       </div>
     </header>
   );
-}
+});
