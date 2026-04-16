@@ -3,7 +3,7 @@ import { getUserIdFromRequest } from "@/lib/auth";
 import { dbConnect } from "@/lib/mongoose";
 import FoodLog from "@/models/FoodLog";
 import User from "@/models/User";
-import { nutritionForPortion } from "@/lib/usda";
+import { calculateNutrition } from "@/lib/gemini";
 import { sendWhatsApp } from "@/lib/twilio";
 
 export const runtime = "nodejs";
@@ -29,9 +29,14 @@ export async function POST(req) {
 
     await dbConnect();
 
-    const enriched = await Promise.all(
-      items.map(async (it) => {
-        const n = await nutritionForPortion(it.foodName, it.portion);
+    // Use Gemini to calculate nutrition for all items in one call
+    const nutrition = await calculateNutrition(items);
+
+    let enriched;
+    if (nutrition) {
+      enriched = items.map((it, i) => {
+        const n = nutrition[i];
+        console.log(`[log] ${it.foodName} (${it.portion}) → ${n.grams}g → ${n.calories} kcal`);
         return {
           foodName: it.foodName,
           portion: it.portion,
@@ -40,12 +45,15 @@ export async function POST(req) {
           protein: n.protein || 0,
           carbs: n.carbs || 0,
           fat: n.fat || 0,
-          fdcId: n.fdcId,
-          matched: n.matched || null,
-          error: n.error || null,
         };
-      })
-    );
+      });
+    } else {
+      // Gemini failed — return error
+      return NextResponse.json(
+        { error: "Could not calculate nutrition. Please try again." },
+        { status: 500 }
+      );
+    }
 
     const totalCalories = enriched.reduce((s, x) => s + (x.calories || 0), 0);
     console.log(`[log] Total: ${totalCalories} kcal for ${enriched.length} items (user ${uid})`);
