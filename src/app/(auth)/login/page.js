@@ -14,10 +14,10 @@ export default function LoginPage() {
   const router = useRouter();
   const [step, setStep] = useState("credentials"); // "credentials" | "otp"
   const [form, setForm] = useState({ email: "", password: "" });
-  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
-  const inputRefs = useRef([]);
+  const hiddenRef = useRef(null);
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
@@ -38,7 +38,7 @@ export default function LoginPage() {
       toast.success("OTP sent to your email");
       setStep("otp");
       setResendCooldown(30);
-      setTimeout(() => inputRefs.current[0]?.focus(), 100);
+      setTimeout(() => hiddenRef.current?.focus(), 100);
     } catch (e) {
       toast.error(e.message);
     } finally {
@@ -66,42 +66,18 @@ export default function LoginPage() {
       router.push("/dashboard");
     } catch (e) {
       toast.error(e.message);
-      setOtp(["", "", "", "", "", ""]);
-      inputRefs.current[0]?.focus();
+      setOtp("");
+      hiddenRef.current?.focus();
     } finally {
       setLoading(false);
     }
   };
 
-  const handleOtpChange = (index, value) => {
-    if (value && !/^\d$/.test(value)) return;
-    const next = [...otp];
-    next[index] = value;
-    setOtp(next);
-
-    if (value && index < 5) {
-      inputRefs.current[index + 1]?.focus();
-    }
-
-    if (next.every((d) => d !== "")) {
-      verifyOtp(next.join(""));
-    }
-  };
-
-  const handleOtpKeyDown = (index, e) => {
-    if (e.key === "Backspace" && !otp[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-    }
-  };
-
-  const handleOtpPaste = (e) => {
-    const text = e.clipboardData.getData("text").trim();
-    if (/^\d{6}$/.test(text)) {
-      e.preventDefault();
-      const digits = text.split("");
-      setOtp(digits);
-      inputRefs.current[5]?.focus();
-      verifyOtp(text);
+  const handleOtpInput = (e) => {
+    const raw = e.target.value.replace(/\D/g, "").slice(0, 6);
+    setOtp(raw);
+    if (raw.length === 6) {
+      verifyOtp(raw);
     }
   };
 
@@ -162,7 +138,7 @@ export default function LoginPage() {
                 transition={{ duration: 0.2 }}
               >
                 <button
-                  onClick={() => { setStep("credentials"); setOtp(["", "", "", "", "", ""]); }}
+                  onClick={() => { setStep("credentials"); setOtp(""); }}
                   className="text-sm text-[color:var(--text-muted)] hover:text-[color:var(--text)] mb-3 flex items-center gap-1"
                 >
                   &larr; Back
@@ -171,21 +147,39 @@ export default function LoginPage() {
                 <p className="text-sm text-[color:var(--text-muted)] mt-1 mb-5">
                   We sent a 6-digit code to <strong>{form.email}</strong>
                 </p>
-                <div className="flex gap-2 justify-center mb-4" onPaste={handleOtpPaste}>
-                  {otp.map((digit, i) => (
-                    <input
-                      key={i}
-                      ref={(el) => (inputRefs.current[i] = el)}
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={1}
-                      value={digit}
-                      onChange={(e) => handleOtpChange(i, e.target.value)}
-                      onKeyDown={(e) => handleOtpKeyDown(i, e)}
-                      disabled={loading}
-                      className="input tabular w-12 h-14 text-center text-xl font-semibold"
-                    />
-                  ))}
+                <div className="relative mb-4">
+                  {/* Hidden input captures all input: typing, paste, and autofill */}
+                  <input
+                    ref={hiddenRef}
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    pattern="\d{6}"
+                    maxLength={6}
+                    value={otp}
+                    onChange={handleOtpInput}
+                    disabled={loading}
+                    className="absolute inset-0 w-full h-full opacity-0 z-10 cursor-pointer"
+                    aria-label="Enter 6-digit verification code"
+                  />
+                  {/* Visual OTP boxes */}
+                  <div
+                    className="flex gap-2 justify-center pointer-events-none"
+                    onClick={() => hiddenRef.current?.focus()}
+                  >
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <div
+                        key={i}
+                        className={`input tabular w-12 h-14 flex items-center justify-center text-xl font-semibold transition-all ${
+                          i === otp.length && !loading
+                            ? "!border-brand-500 !shadow-[0_0_0_2px_rgba(52,199,89,0.2)]"
+                            : ""
+                        }`}
+                      >
+                        {otp[i] || ""}
+                      </div>
+                    ))}
+                  </div>
                 </div>
                 {loading && (
                   <p className="text-sm text-[color:var(--text-muted)] text-center mb-3">
