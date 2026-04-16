@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Flame, Footprints, Scale, Target, Plus, ArrowRight } from "lucide-react";
@@ -13,31 +13,49 @@ import Sheet from "@/components/ui/Sheet";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 
+// Simple in-memory cache so returning to dashboard is instant
+const cache = { foods: null, steps: null, weight: null, ts: 0 };
+const CACHE_TTL = 30_000; // 30 seconds
+
 export default function Dashboard() {
   const { authFetch, user } = useAuth();
-  const [foods, setFoods] = useState([]);
-  const [steps, setSteps] = useState(0);
-  const [weight, setWeight] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [foods, setFoods] = useState(cache.foods || []);
+  const [steps, setSteps] = useState(cache.steps || 0);
+  const [weight, setWeight] = useState(cache.weight);
+  const hasCached = cache.ts > 0 && Date.now() - cache.ts < CACHE_TTL;
+  const [loading, setLoading] = useState(!hasCached);
 
-  const [sheet, setSheet] = useState(null); // 'steps' | 'weight' | null
+  const [sheet, setSheet] = useState(null);
   const [sheetVal, setSheetVal] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const load = async () => {
-    setLoading(true);
+  const load = useCallback(async (showSkeleton) => {
+    if (showSkeleton) setLoading(true);
     try {
       const data = await authFetch("/api/dashboard").then((r) => r.json());
-      setFoods(data.foods || []);
-      setSteps(data.steps || 0);
-      setWeight(data.latestWeight || user?.weightKg || null);
+      const f = data.foods || [];
+      const s = data.steps || 0;
+      const w = data.latestWeight || user?.weightKg || null;
+      setFoods(f);
+      setSteps(s);
+      setWeight(w);
+      cache.foods = f;
+      cache.steps = s;
+      cache.weight = w;
+      cache.ts = Date.now();
     } finally {
       setLoading(false);
     }
-  };
+  }, [authFetch, user?.weightKg]);
 
   useEffect(() => {
-    if (user) load();
+    if (!user) return;
+    // If we have fresh cache, show it instantly and refresh in background
+    if (hasCached) {
+      load(false);
+    } else {
+      load(true);
+    }
     // eslint-disable-next-line
   }, [user]);
 
