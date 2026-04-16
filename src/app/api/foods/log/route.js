@@ -32,7 +32,6 @@ export async function POST(req) {
     const enriched = await Promise.all(
       items.map(async (it) => {
         const n = await nutritionForPortion(it.foodName, it.portion);
-        console.log(`[log] ${it.foodName} (${it.portion}) → ${n.grams}g → ${n.calories} kcal ${n.error ? `[${n.error}]` : `[matched: ${n.matched}]`}`);
         return {
           foodName: it.foodName,
           portion: it.portion,
@@ -43,6 +42,7 @@ export async function POST(req) {
           fat: n.fat || 0,
           fdcId: n.fdcId,
           matched: n.matched || null,
+          error: n.error || null,
         };
       })
     );
