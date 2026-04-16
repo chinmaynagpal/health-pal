@@ -2,106 +2,231 @@
 import { useRef, useState, useEffect, useCallback } from "react";
 import { AnimatePresence, motion, useMotionValue, useTransform, animate } from "framer-motion";
 
-// Snap points as fraction of sheet height from bottom:
-// 1 = fully expanded, 0.55 = half, 0 = closed
-const SNAPS = [0, 0.55, 1];
-const VELOCITY_THRESHOLD = 300;
+const SNAP_FRACTIONS = [0.55, 1]; // half, full (0 = closed, handled separately)
+const VELOCITY_DISMISS = 400;
+const DISMISS_DISTANCE = 100;
+const SPRING = { type: "spring", stiffness: 500, damping: 38, mass: 0.8 };
 
 export default function Sheet({ open, onClose, title, children }) {
   const sheetRef = useRef(null);
   const contentRef = useRef(null);
-  const [sheetH, setSheetH] = useState(0);
-  const [snap, setSnap] = useState(1); // index into SNAPS — start at half (index 1)
+  const [maxH, setMaxH] = useState(0);
+  const [snapIdx, setSnapIdx] = useState(0); // 0=half, 1=full
   const y = useMotionValue(0);
-  const isDraggingSheet = useRef(false);
+  const dragging = useRef(false);
+  const startY = useRef(0);
+  const startMotionY = useRef(0);
 
-  // Measure sheet height once mounted
+  // Lock body scroll when open
+  useEffect(() => {
+    if (!open) return;
+    const scrollY = window.scrollY;
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.left = "0";
+    document.body.style.right = "0";
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.left = "";
+      document.body.style.right = "";
+      document.body.style.overflow = "";
+      window.scrollTo(0, scrollY);
+    };
+  }, [open]);
+
+  // Measure max sheet height
   useEffect(() => {
     if (open && sheetRef.current) {
-      // Small delay to let content render
       const frame = requestAnimationFrame(() => {
-        const h = sheetRef.current?.offsetHeight || 0;
-        setSheetH(h);
+        setMaxH(sheetRef.current?.scrollHeight || 0);
       });
       return () => cancelAnimationFrame(frame);
     }
   }, [open, children]);
 
-  // Compute the y offset for a given snap index
-  const snapY = useCallback(
-    (idx) => {
-      if (!sheetH) return 0;
-      // y=0 is fully expanded, y = sheetH*(1-frac) shifts it down
-      return sheetH * (1 - SNAPS[idx]);
-    },
-    [sheetH]
+  // y offset for a snap index (y=0 = fully expanded, positive = pushed down)
+  const getSnapY = useCallback(
+    (idx) => maxH > 0 ? maxH * (1 - SNAP_FRACTIONS[idx]) : 0,
+    [maxH]
   );
 
-  // Animate to initial snap (half) once we know the height
+  // Open to half snap on mount
   useEffect(() => {
-    if (open && sheetH > 0) {
-      const target = snapY(1);
-      animate(y, target, { type: "spring", stiffness: 450, damping: 36 });
-      setSnap(1);
+    if (open && maxH > 0) {
+      const target = getSnapY(0);
+      y.set(maxH); // start off screen
+      animate(y, target, SPRING);
+      setSnapIdx(0);
     }
-  }, [open, sheetH, snapY, y]);
+  }, [open, maxH, getSnapY, y]);
 
-  const overlayOpacity = useTransform(y, [0, sheetH || 600], [1, 0]);
+  const overlayOpacity = useTransform(y, [0, maxH || 500], [1, 0]);
 
-  const handleDragEnd = (_, info) => {
-    if (!sheetH) return;
+  // Snap to nearest or dismiss
+  const snapTo = useCallback(
+    (velocityY) => {
+      if (!maxH) return;
+      const currentY = y.get();
 
-    const currentY = y.get();
-    const vy = info.velocity.y;
+      // Fast flick down → dismiss or go lower
+      if (velocityY > VELOCITY_DISMISS) {
+        if (snapIdx === 0) {
+          onClose();
+        } else {
+          setSnapIdx(0);
+          animate(y, getSnapY(0), SPRING);
+        }
+        return;
+      }
+      // Fast flick up → expand
+      if (velocityY < -VELOCITY_DISMISS) {
+        const next = Math.min(snapIdx + 1, SNAP_FRACTIONS.length - 1);
+        setSnapIdx(next);
+        animate(y, getSnapY(next), SPRING);
+        return;
+      }
 
-    // Fast flick detection
-    if (vy > VELOCITY_THRESHOLD) {
-      // Flicking down — go to next lower snap or close
-      const nextSnap = snap > 0 ? snap - 1 : 0;
-      if (nextSnap === 0) {
+      // Dismiss if pulled far enough down past half snap
+      if (currentY > getSnapY(0) + DISMISS_DISTANCE) {
         onClose();
         return;
       }
-      setSnap(nextSnap);
-      animate(y, snapY(nextSnap), { type: "spring", stiffness: 450, damping: 36 });
-      return;
-    }
-    if (vy < -VELOCITY_THRESHOLD) {
-      // Flicking up — go to next higher snap
-      const nextSnap = Math.min(snap + 1, SNAPS.length - 1);
-      setSnap(nextSnap);
-      animate(y, snapY(nextSnap), { type: "spring", stiffness: 450, damping: 36 });
-      return;
-    }
 
-    // Otherwise snap to nearest
-    let closest = 1;
-    let closestDist = Infinity;
-    for (let i = 0; i < SNAPS.length; i++) {
-      const sy = snapY(i);
-      const dist = Math.abs(currentY - sy);
-      if (dist < closestDist) {
-        closestDist = dist;
-        closest = i;
+      // Snap to nearest
+      let closest = 0;
+      let closestDist = Infinity;
+      for (let i = 0; i < SNAP_FRACTIONS.length; i++) {
+        const d = Math.abs(currentY - getSnapY(i));
+        if (d < closestDist) {
+          closestDist = d;
+          closest = i;
+        }
       }
-    }
+      setSnapIdx(closest);
+      animate(y, getSnapY(closest), SPRING);
+    },
+    [maxH, snapIdx, y, getSnapY, onClose]
+  );
 
-    if (closest === 0) {
-      onClose();
-    } else {
-      setSnap(closest);
-      animate(y, snapY(closest), { type: "spring", stiffness: 450, damping: 36 });
-    }
-  };
+  // Pointer-based drag on handle
+  const onPointerDown = useCallback(
+    (e) => {
+      dragging.current = true;
+      startY.current = e.clientY;
+      startMotionY.current = y.get();
+      e.currentTarget.setPointerCapture(e.pointerId);
+    },
+    [y]
+  );
 
-  // Fully expanded = snap index 2
-  const isExpanded = snap === 2;
+  const onPointerMove = useCallback(
+    (e) => {
+      if (!dragging.current) return;
+      const delta = e.clientY - startY.current;
+      const raw = startMotionY.current + delta;
+      // Allow slight overscroll above fully expanded (elastic)
+      const clamped = Math.max(-30, raw);
+      y.set(clamped);
+    },
+    [y]
+  );
+
+  const onPointerUp = useCallback(
+    (e) => {
+      if (!dragging.current) return;
+      dragging.current = false;
+      // Estimate velocity from last movement
+      const delta = e.clientY - startY.current;
+      const elapsed = Math.max(16, e.timeStamp % 10000); // rough
+      // Simple velocity: use delta direction and magnitude
+      const vy = delta > 30 ? 500 : delta < -30 ? -500 : 0;
+      // Snap back if pulled above top
+      if (y.get() < 0) {
+        animate(y, 0, SPRING);
+        setSnapIdx(SNAP_FRACTIONS.length - 1);
+        return;
+      }
+      snapTo(vy);
+    },
+    [y, snapTo]
+  );
+
+  // Touch-based drag on content area (only when content is at scroll top)
+  const contentDrag = useRef({ active: false, startY: 0, startMotionY: 0, lastClientY: 0, lastTime: 0 });
+
+  const onContentTouchStart = useCallback(
+    (e) => {
+      const el = contentRef.current;
+      const atTop = !el || el.scrollTop <= 0;
+      // Only start drag if at scroll top or not fully expanded
+      if (atTop || snapIdx < SNAP_FRACTIONS.length - 1) {
+        contentDrag.current = {
+          active: false, // activate after threshold
+          startY: e.touches[0].clientY,
+          startMotionY: y.get(),
+          lastClientY: e.touches[0].clientY,
+          lastTime: Date.now(),
+        };
+      }
+    },
+    [y, snapIdx]
+  );
+
+  const onContentTouchMove = useCallback(
+    (e) => {
+      const cd = contentDrag.current;
+      if (cd.startY === 0) return;
+
+      const touchY = e.touches[0].clientY;
+      const delta = touchY - cd.startY;
+      const el = contentRef.current;
+      const atTop = !el || el.scrollTop <= 0;
+
+      // Activate sheet drag if pulling down from scroll top, or not expanded
+      if (!cd.active) {
+        if ((delta > 6 && atTop) || snapIdx < SNAP_FRACTIONS.length - 1) {
+          cd.active = true;
+        } else {
+          return; // let content scroll
+        }
+      }
+
+      if (cd.active) {
+        e.preventDefault();
+        const raw = cd.startMotionY + delta;
+        y.set(Math.max(-30, raw));
+        cd.lastClientY = touchY;
+        cd.lastTime = Date.now();
+      }
+    },
+    [y, snapIdx]
+  );
+
+  const onContentTouchEnd = useCallback(
+    () => {
+      const cd = contentDrag.current;
+      if (cd.active) {
+        const vy = cd.lastClientY > cd.startY + 30 ? 500 : cd.lastClientY < cd.startY - 30 ? -500 : 0;
+        if (y.get() < 0) {
+          animate(y, 0, SPRING);
+          setSnapIdx(SNAP_FRACTIONS.length - 1);
+        } else {
+          snapTo(vy);
+        }
+      }
+      contentDrag.current = { active: false, startY: 0, startMotionY: 0, lastClientY: 0, lastTime: 0 };
+    },
+    [y, snapTo]
+  );
+
+  const isExpanded = snapIdx === SNAP_FRACTIONS.length - 1;
 
   return (
     <AnimatePresence>
       {open && (
         <>
-          {/* Dim overlay */}
           <motion.div
             className="fixed inset-0 bg-black/25 z-40"
             style={{ opacity: overlayOpacity }}
@@ -112,26 +237,22 @@ export default function Sheet({ open, onClose, title, children }) {
             onClick={onClose}
           />
 
-          {/* Sheet */}
           <motion.div
             ref={sheetRef}
             className="fixed inset-x-0 bottom-0 z-50 bg-[color:var(--surface)] rounded-t-[20px] shadow-[0_-8px_40px_rgba(0,0,0,0.12)] flex flex-col safe-bottom"
-            style={{ y, maxHeight: "90dvh", touchAction: "none" }}
+            style={{ y, maxHeight: "90dvh" }}
             initial={{ y: "100%" }}
-            animate={{ y: 0 }}
             exit={{ y: "110%" }}
-            transition={{ type: "spring", stiffness: 420, damping: 34, mass: 0.8 }}
-            drag="y"
-            dragConstraints={{ top: 0, bottom: sheetH || 600 }}
-            dragElastic={0.08}
-            onDragStart={() => { isDraggingSheet.current = true; }}
-            onDragEnd={(e, info) => {
-              isDraggingSheet.current = false;
-              handleDragEnd(e, info);
-            }}
+            transition={SPRING}
           >
-            {/* Drag handle — always draggable */}
-            <div className="pt-3 pb-2 cursor-grab active:cursor-grabbing shrink-0">
+            {/* Drag handle */}
+            <div
+              className="pt-3 pb-2 cursor-grab active:cursor-grabbing shrink-0 touch-none"
+              onPointerDown={onPointerDown}
+              onPointerMove={onPointerMove}
+              onPointerUp={onPointerUp}
+              onPointerCancel={onPointerUp}
+            >
               <div className="mx-auto w-9 h-[5px] rounded-full bg-[color:var(--text-muted)] opacity-30" />
             </div>
 
@@ -139,6 +260,9 @@ export default function Sheet({ open, onClose, title, children }) {
             <div
               ref={contentRef}
               className={`px-5 pb-8 flex-1 ${isExpanded ? "overflow-y-auto overscroll-contain" : "overflow-hidden"}`}
+              onTouchStart={onContentTouchStart}
+              onTouchMove={onContentTouchMove}
+              onTouchEnd={onContentTouchEnd}
             >
               {title && (
                 <motion.h3
@@ -159,15 +283,15 @@ export default function Sheet({ open, onClose, title, children }) {
               </motion.div>
             </div>
 
-            {/* Expand hint when half-open */}
-            {!isExpanded && sheetH > 0 && (
+            {!isExpanded && maxH > 0 && (
               <motion.button
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.3 }}
                 onClick={() => {
-                  setSnap(2);
-                  animate(y, snapY(2), { type: "spring", stiffness: 450, damping: 36 });
+                  const next = SNAP_FRACTIONS.length - 1;
+                  setSnapIdx(next);
+                  animate(y, getSnapY(next), SPRING);
                 }}
                 className="absolute bottom-2 left-1/2 -translate-x-1/2 text-[11px] text-[color:var(--text-muted)] font-medium pb-1 safe-bottom"
               >
