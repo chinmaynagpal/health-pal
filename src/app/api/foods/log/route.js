@@ -9,14 +9,6 @@ import { sendWhatsApp } from "@/lib/twilio";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-/**
- * POST body:
- * {
- *   imageUrl?: string,
- *   items: [{ foodName: "paneer butter masala", portion: "1 bowl" }, ...]
- * }
- * Portion is REQUIRED for every item.
- */
 export async function POST(req) {
   const uid = getUserIdFromRequest(req);
   if (!uid) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -40,21 +32,23 @@ export async function POST(req) {
     const enriched = await Promise.all(
       items.map(async (it) => {
         const n = await nutritionForPortion(it.foodName, it.portion);
+        console.log(`[log] ${it.foodName} (${it.portion}) → ${n.grams}g → ${n.calories} kcal ${n.error ? `[${n.error}]` : `[matched: ${n.matched}]`}`);
         return {
           foodName: it.foodName,
           portion: it.portion,
-          grams: n.grams,
+          grams: n.grams || 0,
           calories: n.calories || 0,
           protein: n.protein || 0,
           carbs: n.carbs || 0,
           fat: n.fat || 0,
           fdcId: n.fdcId,
-          matched: n.matched,
+          matched: n.matched || null,
         };
       })
     );
 
     const totalCalories = enriched.reduce((s, x) => s + (x.calories || 0), 0);
+    console.log(`[log] Total: ${totalCalories} kcal for ${enriched.length} items (user ${uid})`);
 
     const log = await FoodLog.create({
       userId: uid,
@@ -79,11 +73,11 @@ export async function POST(req) {
 
     return NextResponse.json({ log });
   } catch (e) {
+    console.error("[log] Error:", e.message);
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
 }
 
-/** GET today's logs for user */
 export async function GET(req) {
   const uid = getUserIdFromRequest(req);
   if (!uid) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

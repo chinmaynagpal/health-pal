@@ -10,7 +10,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
  */
 export async function detectFoodsFromImage(base64, mimeType = "image/jpeg") {
   const model = genAI.getGenerativeModel({
-    model: "gemini-flash-latest",
+    model: "gemini-2.0-flash",
     generationConfig: { responseMimeType: "application/json" },
   });
 
@@ -19,16 +19,19 @@ Return ONLY JSON matching this schema:
 {"items":[{"name":"<food name>","commonPortion":"<typical serving e.g. 1 bowl, 1 piece, 100g>","confidence":<0-1>}]}
 Be specific (e.g. "basmati rice" not "rice"; "paneer butter masala" not "curry"). Avoid duplicates.`;
 
-  const result = await model.generateContent([
-    { inlineData: { data: base64, mimeType } },
-    { text: prompt },
-  ]);
-  const text = result.response.text();
   try {
-    const parsed = JSON.parse(text);
+    const result = await model.generateContent([
+      { inlineData: { data: base64, mimeType } },
+      { text: prompt },
+    ]);
+    const text = result.response.text();
+    // Strip markdown code fences if present
+    const cleaned = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+    const parsed = JSON.parse(cleaned);
     if (!Array.isArray(parsed.items)) return { items: [] };
     return parsed;
-  } catch {
+  } catch (e) {
+    console.error("[gemini] Detection failed:", e.message);
     return { items: [] };
   }
 }
