@@ -1,9 +1,20 @@
 "use client";
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import { User, Ruler, Scale, Phone, Flame, Footprints, Target } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import Button from "@/components/ui/Button";
+
+const stagger = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.04 } },
+};
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 14 },
+  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 340, damping: 28 } },
+};
 
 export default function SettingsPage() {
   const { user, authFetch, refresh } = useAuth();
@@ -68,13 +79,18 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="space-y-6 pb-6">
-      <div>
+    <motion.div
+      variants={stagger}
+      initial="hidden"
+      animate="show"
+      className="space-y-6 pb-6"
+    >
+      <motion.div variants={fadeUp}>
         <h1 className="h-display text-[26px]">Settings</h1>
         <p className="text-sm text-[color:var(--text-muted)] mt-0.5">
           Profile, goals, and notifications
         </p>
-      </div>
+      </motion.div>
 
       <Section title="Profile">
         <Row icon={<User size={16} />} label="Name">
@@ -131,16 +147,18 @@ export default function SettingsPage() {
         </Row>
       </Section>
 
-      <Button className="w-full" loading={saving} onClick={save}>
-        Save changes
-      </Button>
-    </div>
+      <motion.div variants={fadeUp}>
+        <Button className="w-full" loading={saving} onClick={save}>
+          Save changes
+        </Button>
+      </motion.div>
+    </motion.div>
   );
 }
 
 function Section({ title, subtitle, children }) {
   return (
-    <div>
+    <motion.div variants={fadeUp}>
       <div className="px-1 mb-2">
         <div className="text-[11px] uppercase tracking-wider text-[color:var(--text-muted)] font-semibold">
           {title}
@@ -150,13 +168,17 @@ function Section({ title, subtitle, children }) {
       {subtitle && (
         <p className="px-1 mt-2 text-[12px] text-[color:var(--text-muted)]">{subtitle}</p>
       )}
-    </div>
+    </motion.div>
   );
 }
 
 function Row({ icon, label, children }) {
   return (
-    <div className="list-row">
+    <motion.div
+      whileTap={{ scale: 0.99, backgroundColor: "rgba(0,0,0,0.02)" }}
+      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+      className="list-row"
+    >
       <div className="flex items-center gap-3 shrink-0">
         <div className="w-7 h-7 rounded-lg bg-[color:var(--surface-2)] grid place-items-center text-[color:var(--text-muted)]">
           {icon}
@@ -164,7 +186,7 @@ function Row({ icon, label, children }) {
         <div className="text-[15px]">{label}</div>
       </div>
       <div className="flex-1 flex justify-end">{children}</div>
-    </div>
+    </motion.div>
   );
 }
 

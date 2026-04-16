@@ -19,8 +19,9 @@ export default function Button({
 }) {
   return (
     <motion.button
-      whileTap={{ scale: 0.97 }}
-      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+      whileTap={{ scale: 0.95, y: 1 }}
+      whileHover={{ scale: 1.015 }}
+      transition={{ type: "spring", stiffness: 500, damping: 25, mass: 0.6 }}
       disabled={disabled || loading}
       className={clsx(
         styles[variant],
@@ -30,7 +31,11 @@ export default function Button({
       {...rest}
     >
       {loading && (
-        <span className="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin" />
+        <motion.span
+          initial={{ opacity: 0, scale: 0.5 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin"
+        />
       )}
       {children}
     </motion.button>

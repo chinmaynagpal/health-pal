@@ -1,11 +1,22 @@
 "use client";
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, BarChart, Bar, CartesianGrid,
 } from "recharts";
 import { useAuth } from "@/context/AuthContext";
 import SegmentedControl from "@/components/ui/SegmentedControl";
 import Skeleton from "@/components/ui/Skeleton";
+
+const stagger = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.08 } },
+};
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 20, scale: 0.97 },
+  show: { opacity: 1, y: 0, scale: 1, transition: { type: "spring", stiffness: 300, damping: 26 } },
+};
 
 export default function ProgressPage() {
   const { authFetch } = useAuth();
@@ -26,8 +37,8 @@ export default function ProgressPage() {
   };
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between">
+    <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-5">
+      <motion.div variants={fadeUp} className="flex items-center justify-between">
         <div>
           <h1 className="h-display text-[26px]">Progress</h1>
           <p className="text-sm text-[color:var(--text-muted)] mt-0.5">Trends & totals</p>
@@ -40,7 +51,7 @@ export default function ProgressPage() {
             { value: "month", label: "Month" },
           ]}
         />
-      </div>
+      </motion.div>
 
       <ChartCard
         title="Calories"
@@ -139,7 +150,7 @@ export default function ProgressPage() {
           </LineChart>
         </ResponsiveContainer>
       </ChartCard>
-    </div>
+    </motion.div>
   );
 }
 
@@ -159,7 +170,7 @@ const tooltipProps = {
 
 function ChartCard({ title, subtitle, children, loading }) {
   return (
-    <div className="surface p-5">
+    <motion.div variants={fadeUp} className="surface p-5">
       <div className="flex items-baseline justify-between mb-4">
         <h3 className="h-display text-[17px]">{title}</h3>
         {subtitle && (
@@ -167,6 +178,6 @@ function ChartCard({ title, subtitle, children, loading }) {
         )}
       </div>
       {loading ? <Skeleton className="w-full h-[200px]" /> : children}
-    </div>
+    </motion.div>
   );
 }
